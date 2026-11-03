@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task Orchestration Engine — Live Telemetry & DAG</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <!-- TOP HEADER -->
+    <header class="app-header">
+      <div class="header-brand">
+        <div class="logo-icon">⚡</div>
+        <div>
+          <h1>Task Orchestration Engine</h1>
+          <p class="subtitle">Ninja-Inspired Verifying-Trace Rebuilder & Topological Parallel Scheduler</p>
+        </div>
+      </div>
+      <div class="header-status">
+        <span id="connectionPill" class="status-pill disconnected">● Connecting...</span>
+        <span id="buildIdBadge" class="build-badge">Session: Idle</span>
+      </div>
+    </header>
+
+    <!-- CONTROL PANEL -->
+    <section class="control-panel">
+      <div class="control-group">
+        <label for="targetSelect">Target</label>
+        <select id="targetSelect">
+          <option value="all">all (Default)</option>
+          <option value="demo.exe">demo.exe</option>
+          <option value="mylib">mylib (Static Lib)</option>
+          <option value="test_runner.exe">test_runner.exe</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label for="workersSelect">Worker Limit</label>
+        <select id="workersSelect">
+          <option value="1">1 Worker (Sequential)</option>
+          <option value="2">2 Workers</option>
+          <option value="4" selected>4 Workers (Parallel)</option>
+          <option value="8">8 Workers</option>
+        </select>
+      </div>
+
+      <div class="control-group checkbox-group">
+        <label>
+          <input type="checkbox" id="cleanBuildCheckbox">
+          <span>Clean Build (Force Rebuild)</span>
+        </label>
+      </div>
+
+      <div class="action-buttons">
+        <button id="runBuildBtn" class="btn btn-primary">
+          <span class="btn-icon">▶</span> Run Build
+        </button>
+        <button id="runBenchmarkBtn" class="btn btn-secondary">
+          <span class="btn-icon">📊</span> Run Benchmark (1w vs 4w)
+        </button>
+        <button id="refreshBtn" class="btn btn-ghost" title="Refresh Graph">
+          ↻
+        </button>
+      </div>
+    </section>
+
+    <!-- METRICS STRIP -->
+    <section class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-label">Wall-Clock Duration</div>
+        <div class="metric-value" id="metricDuration">0.000 s</div>
+        <div class="metric-sub" id="metricStatus">IDLE</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Workers / Concurrency</div>
+        <div class="metric-value" id="metricWorkers">0 / 4</div>
+        <div class="metric-sub" id="metricPeak">Peak: 0 active</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Completed Tasks</div>
+        <div class="metric-value text-green" id="metricCompleted">0 / 0</div>
+        <div class="progress-bar-container">
+          <div class="progress-bar" id="progressBar"></div>
+        </div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Skipped (Up-to-Date)</div>
+        <div class="metric-value text-gray" id="metricSkipped">0</div>
+        <div class="metric-sub">Cache Verified</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Failed / Blocked</div>
+        <div class="metric-value text-red" id="metricFailedBlocked">0 / 0</div>
+        <div class="metric-sub" id="metricFailureSub">No errors</div>
+      </div>
+      <div class="metric-card highlight-card">
+        <div class="metric-label">Parallel Speedup</div>
+        <div class="metric-value text-cyan" id="metricSpeedup">—</div>
+        <div class="metric-sub" id="metricEfficiency">Efficiency: —</div>
+      </div>
+    </section>
+
+    <!-- MAIN WORKSPACE: GRAPH & SIDEBAR PANELS -->
+    <main class="main-layout">
+      <!-- DAG VISUALIZATION CONTAINER -->
+      <section class="dag-panel">
+        <div class="panel-header">
+          <h2>Dependency Directed Acyclic Graph (DAG)</h2>
+          <div class="legend">
+            <span class="legend-item"><span class="dot dot-completed"></span> Completed</span>
+            <span class="legend-item"><span class="dot dot-running"></span> Running</span>
+            <span class="legend-item"><span class="dot dot-ready"></span> Ready</span>
+            <span class="legend-item"><span class="dot dot-skipped"></span> Skipped</span>
+            <span class="legend-item"><span class="dot dot-pending"></span> Pending</span>
+            <span class="legend-item"><span class="dot dot-failed"></span> Failed</span>
+            <span class="legend-item"><span class="dot dot-blocked"></span> Blocked</span>
+          </div>
+        </div>
+        <div class="dag-viewport" id="dagViewport">
+          <svg id="dagSvg" class="dag-svg"></svg>
+        </div>
+      </section>
+
+      <!-- SIDEBAR TELEMETRY TABS -->
+      <aside class="side-panel">
+        <div class="tabs-header">
+          <button class="tab-btn active" data-tab="eventsTab">Live Events</button>
+          <button class="tab-btn" data-tab="tasksTab">Task Table</button>
+          <button class="tab-btn" data-tab="benchTab">Benchmarks</button>
+          <button class="tab-btn" data-tab="detailsTab">Inspector</button>
+        </div>
+
+        <!-- TAB 1: LIVE EVENTS -->
+        <div class="tab-content active" id="eventsTab">
+          <div class="stream-controls">
+            <span id="eventCountLabel">0 events</span>
+            <button id="clearLogBtn" class="btn-tiny">Clear</button>
+          </div>
+          <div class="event-stream" id="eventStream">
+            <div class="event-row placeholder">Awaiting build events...</div>
+          </div>
+        </div>
+
+        <!-- TAB 2: TASK TABLE -->
+        <div class="tab-content" id="tasksTab">
+          <div class="table-container">
+            <table class="data-table" id="tasksTable">
+              <thead>
+                <tr>
+                  <th>Task</th>
+                  <th>Status</th>
+                  <th>Worker</th>
+                  <th>Duration</th>
+                </tr>
+              </thead>
+              <tbody id="tasksTableBody">
+                <tr><td colspan="4" class="text-center">No tasks loaded</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- TAB 3: BENCHMARKS -->
+        <div class="tab-content" id="benchTab">
+          <div class="benchmark-summary" id="benchmarkSummary">
+            <p class="placeholder-text">Click "Run Benchmark" to execute sequential vs parallel builds.</p>
+          </div>
+          <div class="table-container">
+            <table class="data-table" id="benchTable">
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Target</th>
+                  <th>Seq (1w)</th>
+                  <th>Par (4w)</th>
+                  <th>Speedup</th>
+                  <th>Efficiency</th>
+                </tr>
+              </thead>
+              <tbody id="benchTableBody">
+                <tr><td colspan="6" class="text-center">No benchmarks recorded yet</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- TAB 4: INSPECTOR -->
+        <div class="tab-content" id="detailsTab">
+          <div class="node-inspector" id="nodeInspector">
+            <p class="placeholder-text">Click any node in the graph to inspect inputs, outputs, command, and output logs.</p>
+          </div>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

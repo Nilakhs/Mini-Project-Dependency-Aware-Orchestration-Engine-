@@ -1,0 +1,58 @@
+# ==============================================================================
+# Dependency-Aware Parallel Task Orchestration Engine - .gitignore
+# ==============================================================================
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# Python Bytecode & Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+
+# Testing Cache & Diagnostics
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE & Editor Configurations
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Runtime Logs
+*.log
+
+# Environment & Credentials (Safety Precaution)
+.env
+.env.*
+
+# Local Runtime SQLite Databases & WAL/SHM Journals
+data/*.db
+data/*.db-wal
+data/*.db-shm
+
+# Scratch Directory
+scratch/
+
+# Generated C++ Build Artifacts (Binaries, Object Files, Depfiles)
+# NOTE: build.ninja, CMakeCache.txt, and rules.ninja are preserved for standalone execution
+examples/cpp_demo/build/*.exe
+examples/cpp_demo/build/*.a
+examples/cpp_demo/build/**/*.obj
+examples/cpp_demo/build/**/*.d
+examples/cpp_demo/build/CMakeFiles/4.3.1/
+examples/cpp_demo/build/CMakeFiles/CMakeScratch/
+examples/cpp_demo/build/CMakeFiles/pkgRedirects/
+examples/cpp_demo/build/CMakeFiles/*.log
+examples/cpp_demo/build/CMakeFiles/*.yaml
+examples/cpp_demo/build/CMakeFiles/demo.dir/
+examples/cpp_demo/build/CMakeFiles/mylib.dir/
+examples/cpp_demo/build/CMakeFiles/test_runner.dir/
